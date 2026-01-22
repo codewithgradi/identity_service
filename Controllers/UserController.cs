@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 
 [Route("api/[controller]")]
 [ApiController]
@@ -44,5 +45,31 @@ public class UserController : ControllerBase
     {
       return StatusCode(500, e);
     }
+  }
+
+  [HttpPost("login")]
+  public async Task<IActionResult> Login([FromBody] LoginDto loginDto)
+  {
+    if (!ModelState.IsValid) return BadRequest(ModelState);
+    try
+    {
+      var user = await _userManager.Users.FirstOrDefaultAsync(x => x.UserName == loginDto.UserName);
+      if (user == null) return Unauthorized("Invalid username");
+      var result = await _signInManager.CheckPasswordSignInAsync(user, loginDto.Password, false);
+      if (!result.Succeeded) return Unauthorized("Invalid username or password");
+      return Ok(
+        new NewUserDto
+        {
+          UserName = user.Email,
+          Email = user.Email,
+          Token = _tokenService.CreateToken(user)
+        }
+      );
+    }
+    catch (Exception e)
+    {
+      return StatusCode(500, e);
+    }
+    ;
   }
 }
